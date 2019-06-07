@@ -47,7 +47,7 @@ class GlobalCompiler;
 class VM final : private UnCopyable {
   static constexpr sz_t kMaxFrames = 256;
   static constexpr sz_t kHeapGrowFactor = 2;
-  static constexpr sz_t kGCThresholds = 1 << 20;
+  static constexpr sz_t kGCThresholds = 1 << 10;
 
   std::unique_ptr<GlobalCompiler> gcompiler_;
 
@@ -60,7 +60,7 @@ class VM final : private UnCopyable {
   StringObject* ctor_string_{};
   UpvalueObject* open_upvalues_{};
 
-  sz_t bytes_allocated_{};
+  sz_t objects_allocated_{};
   sz_t next_gc_{kGCThresholds};
   std::list<BaseObject*> all_objects_;
   std::list<BaseObject*> worked_objects_;

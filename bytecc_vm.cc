@@ -626,7 +626,6 @@ void VM::collect(void) {
   }
 
   // collect the un-marked objects
-  sz_t new_bytes_allocated = 0;
   for (auto it = all_objects_.begin(); it != all_objects_.end();) {
     if (!(*it)->marked()) {
       free_object(*it);
@@ -634,20 +633,19 @@ void VM::collect(void) {
     }
     else {
       (*it)->set_marked(false);
-      new_bytes_allocated += (*it)->size_bytes();
       ++it;
     }
   }
 
-  bytes_allocated_ = new_bytes_allocated;
-  next_gc_ = bytes_allocated_ * kHeapGrowFactor;
+  objects_allocated_ = all_objects_.size();
+  next_gc_ = objects_allocated_ * kHeapGrowFactor;
 }
 
 void VM::append_object(BaseObject* o) {
-  if (bytes_allocated_ > next_gc_)
+  if (objects_allocated_ > next_gc_)
     collect();
 
-  bytes_allocated_ += o->size_bytes();
+  ++objects_allocated_;
   all_objects_.push_back(o);
 }
 
@@ -688,7 +686,7 @@ InterpretRet VM::interpret(const str_t& source_bytes) {
   push(fn);
   ClosureObject* closure = ClosureObject::create(*this, fn);
   pop();
-  call_value(closure, 0);
+  call(closure, 0);
 
   return run();
 }

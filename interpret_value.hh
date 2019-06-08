@@ -39,7 +39,7 @@ class Instance;
 using CallablePtr = std::shared_ptr<Callable>;
 using InstancePtr = std::shared_ptr<Instance>;
 
-class Value final : private UnCopyable {
+class Value final : public Copyable {
   std::variant<
     nil_t,
     bool,

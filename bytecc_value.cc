@@ -131,10 +131,6 @@ StringObject::~StringObject(void) {
   delete [] data_;
 }
 
-sz_t StringObject::size_bytes(void) const {
-  return sizeof(*this) + sizeof(char) * size_;
-}
-
 str_t StringObject::stringify(void) const {
   return data_;
 }
@@ -181,10 +177,6 @@ NativeObject::NativeObject(NativeFn&& fn) noexcept
   , fn_(std::move(fn)) {
 }
 
-sz_t NativeObject::size_bytes(void) const {
-  return sizeof(*this);
-}
-
 str_t NativeObject::stringify(void) const {
   std::stringstream ss;
   ss << "<native function at `" << this << "`>";
@@ -209,10 +201,6 @@ FunctionObject::~FunctionObject(void) {
   delete chunk_;
 }
 
-sz_t FunctionObject::size_bytes(void) const {
-  return sizeof(*this) + chunk_->size_bytes();
-}
-
 str_t FunctionObject::stringify(void) const {
   std::stringstream ss;
   ss << "<function `" << name_astr() << "` at `" << this << "`>";
@@ -234,10 +222,6 @@ UpvalueObject::UpvalueObject(Value* value, UpvalueObject* next) noexcept
   , next_(next) {
 }
 
-sz_t UpvalueObject::size_bytes(void) const {
-  return sizeof(*this);
-}
-
 str_t UpvalueObject::stringify(void) const {
   return "<upvalue>";
 }
@@ -255,17 +239,16 @@ ClosureObject::ClosureObject(FunctionObject* fn) noexcept
   : BaseObject(ObjType::CLOSURE)
   , fn_(fn)
   , upvalues_count_(fn->upvalues_count()) {
-  upvalues_ = new UpvalueObject*[upvalues_count_];
-  for (int i = 0; i < upvalues_count_; ++i)
-    upvalues_[i] = nullptr;
+  if (upvalues_ > 0) {
+    upvalues_ = new UpvalueObject*[upvalues_count_];
+    for (int i = 0; i < upvalues_count_; ++i)
+      upvalues_[i] = nullptr;
+  }
 }
 
 ClosureObject::~ClosureObject(void) {
-  delete [] upvalues_;
-}
-
-sz_t ClosureObject::size_bytes(void) const {
-  return sizeof(*this) + sizeof(UpvalueObject*) * upvalues_count_;
+  if (upvalues_ != nullptr)
+    delete [] upvalues_;
 }
 
 str_t ClosureObject::stringify(void) const {
@@ -294,11 +277,6 @@ void ClassObject::inherit_from(ClassObject* superclass) {
     methods_[method.first] = method.second;
 }
 
-sz_t ClassObject::size_bytes(void) const {
-  return sizeof(*this) +
-    sizeof(MethodMap::value_type) * methods_.bucket_count();
-}
-
 str_t ClassObject::stringify(void) const {
   std::stringstream ss;
   ss << "<class `" << name_->cstr() << "`>";
@@ -319,10 +297,6 @@ ClassObject* ClassObject::create(VM& vm, StringObject* name) {
 InstanceObject::InstanceObject(ClassObject* cls) noexcept
   : BaseObject(ObjType::INSTANCE)
   , cls_(cls) {
-}
-
-sz_t InstanceObject::size_bytes(void) const {
-  return sizeof(*this) + sizeof(AttrMap::value_type) * attrs_.bucket_count();
 }
 
 str_t InstanceObject::stringify(void) const {
@@ -346,10 +320,6 @@ BoundMehtodObject::BoundMehtodObject(
   : BaseObject(ObjType::BOUND_METHOD)
   , owner_(owner)
   , method_(method) {
-}
-
-sz_t BoundMehtodObject::size_bytes(void) const {
-  return sizeof(*this);
 }
 
 str_t BoundMehtodObject::stringify(void) const {

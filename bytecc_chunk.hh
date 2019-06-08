@@ -164,7 +164,6 @@ public:
       visitor(c);
   }
 
-  sz_t size_bytes(void) const;
   void dis(const str_t& name);
   int dis_ins(int offset);
 };

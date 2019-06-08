@@ -29,13 +29,6 @@
 
 namespace loxcc::bytecc {
 
-sz_t Chunk::size_bytes(void) const {
-  return sizeof(*this) +
-    sizeof(u8_t) * codes_.capacity() +
-    sizeof(int) * codes_.capacity() +
-    sizeof(Value) * constants_.capacity();
-}
-
 void Chunk::dis(const str_t& name) {
   std::cout << "========= [" << name << "] =========" << std::endl;
   for (int i = 0; i < codes_count();)

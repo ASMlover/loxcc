@@ -60,7 +60,6 @@ public:
   inline bool marked(void) const { return marked_; }
   inline void set_marked(bool marked = true) { marked_ = marked; }
 
-  virtual sz_t size_bytes(void) const = 0;
   virtual str_t stringify(void) const = 0;
   virtual bool is_truthy(void) const { return true; }
   virtual void blacken(VM& vm) {}
@@ -230,7 +229,6 @@ public:
   inline const char* data(void) const { return data_; }
   inline u32_t hash(void) const { return hash_; }
 
-  virtual sz_t size_bytes(void) const override;
   virtual str_t stringify(void) const override;
 
   static StringObject* create(VM& vm, const str_t& s);
@@ -243,11 +241,9 @@ class NativeObject final : public BaseObject {
 public:
   NativeObject(const NativeFn& fn) noexcept;
   NativeObject(NativeFn&& fn) noexcept;
-  virtual ~NativeObject(void) {}
 
   inline NativeFn fn(void) const { return fn_; }
 
-  virtual sz_t size_bytes(void) const override;
   virtual str_t stringify(void) const override;
 
   static NativeObject* create(VM& vm, const NativeFn& fn);
@@ -276,7 +272,6 @@ public:
   inline void set_name(StringObject* name) { name_ = name; }
   inline Chunk* chunk(void) { return chunk_; }
 
-  virtual sz_t size_bytes(void) const override;
   virtual str_t stringify(void) const override;
   virtual void blacken(VM& vm) override;
 
@@ -289,7 +284,6 @@ class UpvalueObject final : public BaseObject {
   UpvalueObject* next_{};
 public:
   UpvalueObject(Value* value, UpvalueObject* next = nullptr) noexcept;
-  virtual ~UpvalueObject(void) {}
 
   inline Value* value(void) const { return value_; }
   inline void set_value(Value* value) { value_ = value; }
@@ -301,7 +295,6 @@ public:
   inline UpvalueObject* next(void) const { return next_; }
   inline void set_next(UpvalueObject* next) { next_ = next; }
 
-  virtual sz_t size_bytes(void) const override;
   virtual str_t stringify(void) const override;
   virtual void blacken(VM& vm) override;
 
@@ -326,7 +319,6 @@ public:
     upvalues_[i] = upvalue;
   }
 
-  virtual sz_t size_bytes(void) const override;
   virtual str_t stringify(void) const override;
   virtual void blacken(VM& vm) override;
 
@@ -340,7 +332,6 @@ class ClassObject final : public BaseObject {
   MethodMap methods_;
 public:
   ClassObject(StringObject* name) noexcept;
-  virtual ~ClassObject(void) {}
 
   inline StringObject* name(void) const { return name_; }
   inline const char* name_astr(void) const { return name_->cstr(); }
@@ -365,7 +356,6 @@ public:
 
   void inherit_from(ClassObject* superclass);
 
-  virtual sz_t size_bytes(void) const override;
   virtual str_t stringify(void) const override;
   virtual void blacken(VM& vm) override;
 
@@ -379,7 +369,6 @@ class InstanceObject final : public BaseObject {
   AttrMap attrs_;
 public:
   InstanceObject(ClassObject* cls) noexcept;
-  virtual ~InstanceObject(void) {}
 
   inline ClassObject* cls(void) const { return cls_; }
 
@@ -401,7 +390,6 @@ public:
     return {};
   }
 
-  virtual sz_t size_bytes(void) const override;
   virtual str_t stringify(void) const override;
   virtual void blacken(VM& vm) override;
 
@@ -413,12 +401,10 @@ class BoundMehtodObject final : public BaseObject {
   ClosureObject* method_{};
 public:
   BoundMehtodObject(const Value& owner, ClosureObject* method) noexcept;
-  virtual ~BoundMehtodObject(void) {}
 
   inline const Value& owner(void) const { return owner_; }
   inline ClosureObject* method(void) const { return method_; }
 
-  virtual sz_t size_bytes(void) const override;
   virtual str_t stringify(void) const override;
   virtual void blacken(VM& vm) override;
 

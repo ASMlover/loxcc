@@ -51,11 +51,17 @@ class Copyable {
 protected:
   Copyable(void) noexcept = default;
   ~Copyable(void) noexcept = default;
+  Copyable(const Copyable&) noexcept = default;
+  Copyable(Copyable&&) noexcept = default;
+  Copyable& operator=(const Copyable&) noexcept = default;
+  Copyable& operator=(Copyable&&) noexcept = default;
 };
 
 class UnCopyable {
   UnCopyable(const UnCopyable&) noexcept = delete;
+  UnCopyable(UnCopyable&&) noexcept = delete;
   UnCopyable& operator=(const UnCopyable&) noexcept = delete;
+  UnCopyable& operator=(UnCopyable&&) noexcept = delete;
 protected:
   UnCopyable(void) noexcept = default;
   ~UnCopyable(void) noexcept = default;

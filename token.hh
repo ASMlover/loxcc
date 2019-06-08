@@ -92,7 +92,7 @@ public:
     return kind_;
   }
 
-  inline str_t literal(void) const {
+  inline const str_t& literal(void) const {
     return literal_;
   }
 

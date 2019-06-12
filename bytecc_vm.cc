@@ -447,9 +447,12 @@ InterpretRet VM::run(void) {
     case Code::ADD:
       {
         if (peek(0).is_string() && peek(1).is_string()) {
-          StringObject* b = pop().as_string();
-          StringObject* a = pop().as_string();
-          push(StringObject::concat(*this, a, b));
+          StringObject* b = peek(0).as_string();
+          StringObject* a = peek(1).as_string();
+          StringObject* s = StringObject::concat(*this, a, b);
+          pop();
+          pop();
+          push(s);
         }
         else if (peek(0).is_numeric() && peek(1).is_numeric()) {
           double b = pop().as_numeric();

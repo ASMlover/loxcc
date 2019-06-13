@@ -608,7 +608,7 @@ void VM::collect(void) {
   // mark the globals roots
   for (auto& x : globals_)
     mark_value(x.second);
-  gcompiler_->mark_roots(*this);
+  gcompiler_->mark_compiler();
   mark_object(ctor_string_);
 
   // traverse the references

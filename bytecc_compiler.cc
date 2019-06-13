@@ -406,7 +406,7 @@ class GlobalParser final : private UnCopyable {
     return identifier_constant(prev_);
   }
 
-  void make_initialized(void) {
+  void mark_initialized(void) {
     // if in global scope, do nothing
     if (curr_compiler_->scope_depth == 0)
       return;
@@ -417,7 +417,7 @@ class GlobalParser final : private UnCopyable {
   void define_variable(u8_t global) {
     if (curr_compiler_->scope_depth > 0) {
       // goto initialize the local variable scope depth
-      make_initialized();
+      mark_initialized();
       return;
     }
 
@@ -875,7 +875,7 @@ class GlobalParser final : private UnCopyable {
 
   void fun_decl(void) {
     u8_t global = parse_variable("expect function name");
-    make_initialized();
+    mark_initialized();
     function(FunctionType::FUNCTION);
     define_variable(global);
   }
@@ -1066,7 +1066,10 @@ public:
     : vm_(vm), lex_(lex) {
   }
 
-  inline Compiler* curr_compiler(void) const { return curr_compiler_; }
+  inline void mark_compiler(void) {
+    for (Compiler* c = curr_compiler_; c != nullptr; c = c->enclosing)
+      vm_.mark_object(c->fn);
+  }
 
   FunctionObject* run_compile(void) {
     Compiler compiler;
@@ -1091,15 +1094,9 @@ FunctionObject* GlobalCompiler::compile(VM& vm, const str_t& source_bytes) {
   return fn;
 }
 
-void GlobalCompiler::mark_roots(VM& vm) {
-  if (!gparser_)
-    return;
-
-  Compiler* iter_compiter = gparser_->curr_compiler();
-  while (iter_compiter != nullptr) {
-    vm.mark_object(iter_compiter->fn);
-    iter_compiter = iter_compiter->enclosing;
-  }
+void GlobalCompiler::mark_compiler(void) {
+  if (gparser_)
+    gparser_->mark_compiler();
 }
 
 }

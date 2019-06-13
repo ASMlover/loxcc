@@ -627,67 +627,55 @@ class GlobalParser final : private UnCopyable {
     }
   }
 
-  const ParseRule& get_rule(TokenKind kind) {
-    auto grouping_fn = [](GlobalParser* p, bool b) { p->grouping(b); };
-    auto call_fn = [](GlobalParser* p, bool b) { p->call(b); };
-    auto dot_fn = [](GlobalParser* p, bool b) { p->dot(b); };
-    auto unary_fn = [](GlobalParser* p, bool b) { p->unary(b); };
-    auto binary_fn = [](GlobalParser* p, bool b) { p->binary(b); };
-    auto variable_fn = [](GlobalParser* p, bool b) { p->variable(b); };
-    auto numeric_fn = [](GlobalParser* p, bool b) { p->numeric(b); };
-    auto string_fn = [](GlobalParser* p, bool b) { p->string(b); };
-    auto and_fn = [](GlobalParser* p, bool b) { p->and_exp(b); };
-    auto or_fn = [](GlobalParser* p, bool b) { p->or_exp(b); };
-    auto literal_fn = [](GlobalParser* p, bool b) { p->literal(b); };
-    auto super_fn = [](GlobalParser* p, bool b) { p->super_exp(b); };
-    auto this_fn = [](GlobalParser* p, bool b) { p->this_exp(b); };
-
+  const ParseRule& get_rule(TokenKind kind) const {
+#define RULE(fn) [](GlobalParser* p, bool b) { p->fn(b); }
     static const ParseRule _rules[] = {
-      {grouping_fn, call_fn, Precedence::CALL}, // PUNCTUATOR(LPAREN, "(")
-      {nullptr, nullptr, Precedence::NONE}, // PUNCTUATOR(RPAREN, ")")
-      {nullptr, nullptr, Precedence::NONE}, // PUNCTUATOR(LBRACE, "{")
-      {nullptr, nullptr, Precedence::NONE}, // PUNCTUATOR(RBRACE, "}")
-      {nullptr, nullptr, Precedence::NONE}, // PUNCTUATOR(COMMA, ",")
-      {nullptr, dot_fn, Precedence::CALL}, // PUNCTUATOR(DOT, ".")
-      {unary_fn, binary_fn, Precedence::TERM}, // PUNCTUATOR(MINUS, "-")
-      {nullptr, binary_fn, Precedence::TERM}, // PUNCTUATOR(PLUS, "+")
-      {nullptr, nullptr, Precedence::NONE}, // PUNCTUATOR(SEMI, ";")
-      {nullptr, binary_fn, Precedence::FACTOR}, // PUNCTUATOR(SLASH, "/")
-      {nullptr, binary_fn, Precedence::FACTOR}, // PUNCTUATOR(STAR, "*")
+      {RULE(grouping), RULE(call), Precedence::CALL},   // PUNCTUATOR(LPAREN, "(")
+      {nullptr, nullptr, Precedence::NONE},             // PUNCTUATOR(RPAREN, ")")
+      {nullptr, nullptr, Precedence::NONE},             // PUNCTUATOR(LBRACE, "{")
+      {nullptr, nullptr, Precedence::NONE},             // PUNCTUATOR(RBRACE, "}")
+      {nullptr, nullptr, Precedence::NONE},             // PUNCTUATOR(COMMA, ",")
+      {nullptr, RULE(dot), Precedence::CALL},           // PUNCTUATOR(DOT, ".")
+      {RULE(unary), RULE(binary), Precedence::TERM},    // PUNCTUATOR(MINUS, "-")
+      {nullptr, RULE(binary), Precedence::TERM},        // PUNCTUATOR(PLUS, "+")
+      {nullptr, nullptr, Precedence::NONE},             // PUNCTUATOR(SEMI, ";")
+      {nullptr, RULE(binary), Precedence::FACTOR},      // PUNCTUATOR(SLASH, "/")
+      {nullptr, RULE(binary), Precedence::FACTOR},      // PUNCTUATOR(STAR, "*")
 
-      {unary_fn, nullptr, Precedence::NONE}, // PUNCTUATOR(BANG, "!")
-      {nullptr, binary_fn, Precedence::EQUALITY}, // PUNCTUATOR(BANGEQ, "!=")
-      {nullptr, nullptr, Precedence::NONE}, // PUNCTUATOR(EQ, "=")
-      {nullptr, binary_fn, Precedence::EQUALITY}, // PUNCTUATOR(EQEQ, "==")
-      {nullptr, binary_fn, Precedence::COMPARISON}, // PUNCTUATOR(GT, ">")
-      {nullptr, binary_fn, Precedence::COMPARISON}, // PUNCTUATOR(GTEQ, ">=")
-      {nullptr, binary_fn, Precedence::COMPARISON}, // PUNCTUATOR(LT, "<")
-      {nullptr, binary_fn, Precedence::COMPARISON}, // PUNCTUATOR(LTEQ, "<=")
+      {RULE(unary), nullptr, Precedence::NONE},         // PUNCTUATOR(BANG, "!")
+      {nullptr, RULE(binary), Precedence::EQUALITY},    // PUNCTUATOR(BANGEQ, "!=")
+      {nullptr, nullptr, Precedence::NONE},             // PUNCTUATOR(EQ, "=")
+      {nullptr, RULE(binary), Precedence::EQUALITY},    // PUNCTUATOR(EQEQ, "==")
+      {nullptr, RULE(binary), Precedence::COMPARISON},  // PUNCTUATOR(GT, ">")
+      {nullptr, RULE(binary), Precedence::COMPARISON},  // PUNCTUATOR(GTEQ, ">=")
+      {nullptr, RULE(binary), Precedence::COMPARISON},  // PUNCTUATOR(LT, "<")
+      {nullptr, RULE(binary), Precedence::COMPARISON},  // PUNCTUATOR(LTEQ, "<=")
 
-      {variable_fn, nullptr, Precedence::NONE}, // TOKEN(IDENTIFIER, "identifier")
-      {numeric_fn, nullptr, Precedence::NONE}, // TOKEN(NUMERIC, "numeric")
-      {string_fn, nullptr, Precedence::NONE}, // TOKEN(STRING, "string")
+      {RULE(variable), nullptr, Precedence::NONE},      // TOKEN(IDENTIFIER, "identifier")
+      {RULE(numeric), nullptr, Precedence::NONE},       // TOKEN(NUMERIC, "numeric")
+      {RULE(string), nullptr, Precedence::NONE},        // TOKEN(STRING, "string")
 
-      {nullptr, and_fn, Precedence::AND}, // KEYWORD(AND, "and")
-      {nullptr, nullptr, Precedence::NONE}, // KEYWORD(CLASS, "class")
-      {nullptr, nullptr, Precedence::NONE}, // KEYWORD(ELSE, "else")
-      {literal_fn, nullptr, Precedence::NONE}, // KEYWORD(FALSE, "false")
-      {nullptr, nullptr, Precedence::NONE}, // KEYWORD(FOR, "for")
-      {nullptr, nullptr, Precedence::NONE}, // KEYWORD(FUN, "fun")
-      {nullptr, nullptr, Precedence::NONE}, // KEYWORD(IF, "if")
-      {literal_fn, nullptr, Precedence::NONE}, // KEYWORD(NIL, "nil")
-      {nullptr, or_fn, Precedence::OR}, // KEYWORD(OR, "or")
-      {nullptr, nullptr, Precedence::NONE}, // KEYWORD(PRINT, "print")
-      {nullptr, nullptr, Precedence::NONE}, // KEYWORD(RETURN, "return")
-      {super_fn, nullptr, Precedence::NONE}, // KEYWORD(SUPER, "super")
-      {this_fn, nullptr, Precedence::NONE}, // KEYWORD(THIS, "this")
-      {literal_fn, nullptr, Precedence::NONE}, // KEYWORD(TRUE, "true")
-      {nullptr, nullptr, Precedence::NONE}, // KEYWORD(VAR, "var")
-      {nullptr, nullptr, Precedence::NONE}, // KEYWORD(WHILE, "while")
+      {nullptr, RULE(and_exp), Precedence::AND},        // KEYWORD(AND, "and")
+      {nullptr, nullptr, Precedence::NONE},             // KEYWORD(CLASS, "class")
+      {nullptr, nullptr, Precedence::NONE},             // KEYWORD(ELSE, "else")
+      {RULE(literal), nullptr, Precedence::NONE},       // KEYWORD(FALSE, "false")
+      {nullptr, nullptr, Precedence::NONE},             // KEYWORD(FOR, "for")
+      {nullptr, nullptr, Precedence::NONE},             // KEYWORD(FUN, "fun")
+      {nullptr, nullptr, Precedence::NONE},             // KEYWORD(IF, "if")
+      {RULE(literal), nullptr, Precedence::NONE},       // KEYWORD(NIL, "nil")
+      {nullptr, RULE(or_exp), Precedence::OR},          // KEYWORD(OR, "or")
+      {nullptr, nullptr, Precedence::NONE},             // KEYWORD(PRINT, "print")
+      {nullptr, nullptr, Precedence::NONE},             // KEYWORD(RETURN, "return")
+      {RULE(super_exp), nullptr, Precedence::NONE},     // KEYWORD(SUPER, "super")
+      {RULE(this_exp), nullptr, Precedence::NONE},      // KEYWORD(THIS, "this")
+      {RULE(literal), nullptr, Precedence::NONE},       // KEYWORD(TRUE, "true")
+      {nullptr, nullptr, Precedence::NONE},             // KEYWORD(VAR, "var")
+      {nullptr, nullptr, Precedence::NONE},             // KEYWORD(WHILE, "while")
 
-      {nullptr, nullptr, Precedence::NONE}, // TOKEN(EOF, "eof")
-      {nullptr, nullptr, Precedence::NONE}, // TOKEN(ERR, "error")
+      {nullptr, nullptr, Precedence::NONE},             // TOKEN(EOF, "eof")
+      {nullptr, nullptr, Precedence::NONE},             // TOKEN(ERR, "error")
     };
+#undef RULE
 
     return _rules[Xt::as_type<int>(kind)];
   }

@@ -656,6 +656,10 @@ InterpretRet VM::run(void) {
     CASE_CODE(METHOD): define_method(_RDSTRING()); DISPATCH();
   }
 
+#undef DISPATCH
+#undef CASE_CODE
+#undef INTERPRET_LOOP
+#undef TRACE_EXEC_INSTRUCTION
 #undef _BINARYOP
   return InterpretRet::OK;
 }

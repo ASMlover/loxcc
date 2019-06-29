@@ -35,84 +35,9 @@
 namespace loxcc::bytecc {
 
 enum class Code : u8_t {
-  CONSTANT,
-
-  NIL,
-  TRUE,
-  FALSE,
-  POP,
-
-  DEF_GLOBAL,
-  GET_GLOBAL,
-  SET_GLOBAL,
-  GET_LOCAL,
-  SET_LOCAL,
-  GET_UPVALUE,
-  SET_UPVALUE,
-  GET_ATTR,
-  SET_ATTR,
-
-  GET_SUPER,
-
-  EQ,
-  NE,
-  GT,
-  GE,
-  LT,
-  LE,
-
-  ADD,
-  SUB,
-  MUL,
-  DIV,
-  NOT,
-  NEG,
-
-  PRINT,
-
-  JUMP,
-  JUMP_IF_FALSE,
-  LOOP,
-
-  // calls and functions
-  CALL_0,
-  CALL_1,
-  CALL_2,
-  CALL_3,
-  CALL_4,
-  CALL_5,
-  CALL_6,
-  CALL_7,
-  CALL_8,
-
-  // methods and initializers
-  INVOKE_0,
-  INVOKE_1,
-  INVOKE_2,
-  INVOKE_3,
-  INVOKE_4,
-  INVOKE_5,
-  INVOKE_6,
-  INVOKE_7,
-  INVOKE_8,
-
-  // superclasses
-  SUPER_0,
-  SUPER_1,
-  SUPER_2,
-  SUPER_3,
-  SUPER_4,
-  SUPER_5,
-  SUPER_6,
-  SUPER_7,
-  SUPER_8,
-
-  CLOSURE,
-  CLOSE_UPVALUE,
-  RETURN,
-  CLASS,
-  SUBCLASS,
-  METHOD,
+#undef BYTECC_CODEF
+#define BYTECC_CODEF(c) c,
+#include "bytecc_codes.hh"
 };
 
 inline u8_t operator+(Code a, Code b) {

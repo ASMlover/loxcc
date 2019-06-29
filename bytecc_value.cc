@@ -37,43 +37,103 @@ inline T* make_object(VM& vm, Args&&... args) {
   return o;
 }
 
-StringObject* Value::as_string(void) const {
+StringObject* TagValue::as_string(void) const {
+  return Xt::down<StringObject>(as_object());
+}
+
+const char* TagValue::as_cstring(void) const {
+  return Xt::down<StringObject>(as_object())->cstr();
+}
+
+NativeObject* TagValue::as_native(void) const {
+  return Xt::down<NativeObject>(as_object());
+}
+
+FunctionObject* TagValue::as_function(void) const {
+  return Xt::down<FunctionObject>(as_object());
+}
+
+UpvalueObject* TagValue::as_upvalue(void) const {
+  return Xt::down<UpvalueObject>(as_object());
+}
+
+ClosureObject* TagValue::as_closure(void) const {
+  return Xt::down<ClosureObject>(as_object());
+}
+
+ClassObject* TagValue::as_class(void) const {
+  return Xt::down<ClassObject>(as_object());
+}
+
+InstanceObject* TagValue::as_instance(void) const {
+  return Xt::down<InstanceObject>(as_object());
+}
+
+BoundMehtodObject* TagValue::as_bound_method(void) const {
+  return Xt::down<BoundMehtodObject>(as_object());
+}
+
+bool TagValue::is_truthy(void) const {
+  if (is_nil())
+    return false;
+  else if (is_boolean())
+    return as_boolean();
+  else if (is_numeric())
+    return as_numeric() != 0.f;
+  else if (is_object())
+    return as_object()->is_truthy();
+  return false;
+}
+
+str_t TagValue::stringify(void) const {
+  if (is_nil())
+    return "nil";
+  else if (is_boolean())
+    return as_boolean() ? "true" : "false";
+  else if (is_numeric())
+    return Xt::to_string(as_numeric());
+  else if (is_object())
+    return as_object()->stringify();
+  return "";
+}
+
+StringObject* ObjValue::as_string(void) const {
   return Xt::down<StringObject>(as_.object);
 }
 
-const char* Value::as_cstring(void) const {
+const char* ObjValue::as_cstring(void) const {
   return Xt::down<StringObject>(as_.object)->cstr();
 }
 
-Value::NativeTp Value::as_native(void) const {
-  return Xt::down<NativeObject>(as_.object)->fn();
+NativeObject* ObjValue::as_native(void) const {
+  return Xt::down<NativeObject>(as_.object);
 }
 
-FunctionObject* Value::as_function(void) const {
+FunctionObject* ObjValue::as_function(void) const {
   return Xt::down<FunctionObject>(as_.object);
 }
 
-UpvalueObject* Value::as_upvalue(void) const {
+UpvalueObject* ObjValue::as_upvalue(void) const {
   return Xt::down<UpvalueObject>(as_.object);
 }
 
-ClosureObject* Value::as_closure(void) const {
+ClosureObject* ObjValue::as_closure(void) const {
   return Xt::down<ClosureObject>(as_.object);
 }
 
-ClassObject* Value::as_class(void) const {
+ClassObject* ObjValue::as_class(void) const {
   return Xt::down<ClassObject>(as_.object);
 }
 
-InstanceObject* Value::as_instance(void) const {
+InstanceObject* ObjValue::as_instance(void) const {
   return Xt::down<InstanceObject>(as_.object);
 }
 
-BoundMehtodObject* Value::as_bound_method(void) const {
+BoundMehtodObject* ObjValue::as_bound_method(void) const {
   return Xt::down<BoundMehtodObject>(as_.object);
 }
 
-bool Value::operator==(const Value& r) const {
+bool ObjValue::operator==(const ObjValue& r) const {
   if (this == &r)
     return true;
   if (type_ != r.type_)
@@ -88,11 +148,11 @@ bool Value::operator==(const Value& r) const {
   return false;
 }
 
-bool Value::operator!=(const Value& r) const {
+bool ObjValue::operator!=(const ObjValue& r) const {
   return !(*this == r);
 }
 
-bool Value::is_truthy(void) const {
+bool ObjValue::is_truthy(void) const {
   switch (type_) {
   case ValueType::NIL: return false;
   case ValueType::BOOLEAN: return as_.boolean;
@@ -102,7 +162,7 @@ bool Value::is_truthy(void) const {
   return false;
 }
 
-str_t Value::stringify(void) const {
+str_t ObjValue::stringify(void) const {
   switch (type_) {
   case ValueType::NIL: return "nil";
   case ValueType::BOOLEAN: return as_.boolean ? "true" : "false";

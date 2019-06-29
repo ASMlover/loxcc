@@ -197,7 +197,7 @@ bool VM::call_value(const Value& callee, int argc) {
     switch (callee.as_object()->type()) {
     case ObjType::NATIVE:
       {
-        Value r = callee.as_native()(argc, stack_values(argc));
+        Value r = callee.as_native()->fn()(argc, stack_values(argc));
         stack_resize(argc + 1);
         push(r);
         return true;

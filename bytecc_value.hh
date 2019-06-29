@@ -81,9 +81,133 @@ enum class ValueType {
   OBJECT,
 };
 
-class Value final : public Copyable {
-  using NativeTp = std::function<Value (int argc, Value* args)>;
+class TagValue final : public Copyable {
+  static constexpr u64_t kSignBit = 1llu << 63;
+  static constexpr u64_t kQNaN = 0x7ffc000000000000llu;
 
+  enum Tag {
+    NIL   = 0x01,
+    FALSE = 0x02,
+    TRUE  = 0x03
+  };
+
+  union DoubleUnion {
+    u64_t bits64;
+    u32_t bits32[2];
+    double num;
+  };
+
+  inline double as_d64(u64_t u64) const {
+    DoubleUnion du;
+    du.bits64 = u64;
+    return du.num;
+  }
+
+  inline u64_t as_u64(double d64) const {
+    DoubleUnion du;
+    du.num = d64;
+    return du.bits64;
+  }
+
+  u64_t bits_{};
+
+  inline bool check(ObjType type) const {
+    return is_object() && as_object()->type() == type;
+  }
+public:
+  TagValue(void) noexcept : bits_(kQNaN | Tag::NIL) {}
+  TagValue(nil_t) noexcept : bits_(kQNaN | Tag::NIL) {}
+  TagValue(bool b) noexcept : bits_(b ? (kQNaN | Tag::TRUE) : (kQNaN | Tag::FALSE)) {}
+  TagValue(i8_t x) noexcept : bits_(x) {}
+  TagValue(u8_t x) noexcept : bits_(x) {}
+  TagValue(i16_t x) noexcept : bits_(x) {}
+  TagValue(u16_t x) noexcept : bits_(x) {}
+  TagValue(i32_t x) noexcept : bits_(x) {}
+  TagValue(u32_t x) noexcept : bits_(x) {}
+  TagValue(i64_t x) noexcept : bits_(x) {}
+  TagValue(u64_t x) noexcept : bits_(x) {}
+  TagValue(float x) noexcept : bits_(as_u64(x)) {}
+  TagValue(double d) noexcept : bits_(as_u64(d)) {}
+  TagValue(BaseObject* o) noexcept : bits_(kSignBit | kQNaN | (u64_t)(o)) {}
+  TagValue(const TagValue& r) noexcept : bits_(r.bits_) {}
+  TagValue(TagValue&& r) noexcept : bits_(std::move(r.bits_)) {}
+
+  inline TagValue& operator=(const TagValue& r) noexcept {
+    if (this != &r)
+      bits_ = r.bits_;
+    return *this;
+  }
+
+  inline TagValue& operator=(TagValue&& r) noexcept {
+    if (this != &r)
+      bits_ = std::move(r.bits_);
+    return *this;
+  }
+
+  inline bool operator>(const TagValue& r) const noexcept {
+    return as_numeric() > r.as_numeric();
+  }
+
+  inline bool operator>=(const TagValue& r) const noexcept {
+    return as_numeric() >= r.as_numeric();
+  }
+
+  inline bool operator<(const TagValue& r) const noexcept {
+    return as_numeric() < r.as_numeric();
+  }
+
+  inline bool operator<=(const TagValue& r) const noexcept {
+    return as_numeric() <= r.as_numeric();
+  }
+
+  inline bool operator!(void) const noexcept {
+    return !is_truthy();
+  }
+
+  inline TagValue operator-(void) const noexcept {
+    return -as_numeric();
+  }
+
+  inline bool operator==(const TagValue& r) const noexcept {
+    return bits_ == r.bits_;
+  }
+
+  inline bool operator!=(const TagValue& r) const noexcept {
+    return bits_ != r.bits_;
+  }
+
+  inline bool is_nil(void) const { return bits_ == (kQNaN | Tag::NIL); }
+  inline bool is_boolean(void) const { return (bits_ & (kQNaN | Tag::FALSE)) == (kQNaN | Tag::FALSE); }
+  inline bool is_numeric(void) const { return (bits_ & kQNaN) != kQNaN; }
+  inline bool is_object(void) const { return (bits_ & (kQNaN | kSignBit)) == (kQNaN | kSignBit); }
+  inline bool is_string(void) const { return check(ObjType::STRING); }
+  inline bool is_native(void) const { return check(ObjType::NATIVE); }
+  inline bool is_function(void) const { return check(ObjType::FUNCTION); }
+  inline bool is_upvalue(void) const { return check(ObjType::UPVALUE); }
+  inline bool is_closure(void) const { return check(ObjType::CLOSURE); }
+  inline bool is_class(void) const { return check(ObjType::CLASS); }
+  inline bool is_instance(void) const { return check(ObjType::INSTANCE); }
+  inline bool is_bound_method(void) const { return check(ObjType::BOUND_METHOD); }
+
+  inline bool as_boolean(void) const { return bits_ == (kQNaN | Tag::TRUE); }
+  inline double as_numeric(void) const { return as_d64(bits_); }
+  inline BaseObject* as_object(void) const { return (BaseObject*)(bits_ & ~(kQNaN | kSignBit)); }
+
+  StringObject* as_string(void) const;
+  const char* as_cstring(void) const;
+  NativeObject* as_native(void) const;
+  FunctionObject* as_function(void) const;
+  UpvalueObject* as_upvalue(void) const;
+  ClosureObject* as_closure(void) const;
+  ClassObject* as_class(void) const;
+  InstanceObject* as_instance(void) const;
+  BoundMehtodObject* as_bound_method(void) const;
+
+  bool is_truthy(void) const;
+  str_t stringify(void) const;
+};
+
+class ObjValue final : public Copyable {
   ValueType type_{ValueType::NIL};
   union {
     bool boolean;
@@ -99,22 +223,22 @@ class Value final : public Copyable {
     return is_object() && as_.object->type() == type;
   }
 public:
-  Value(void) noexcept {}
-  Value(nil_t) noexcept {}
-  Value(bool b) noexcept : type_(ValueType::BOOLEAN) { as_.boolean = b; }
-  Value(i8_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
-  Value(u8_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
-  Value(i16_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
-  Value(u16_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
-  Value(i32_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
-  Value(u32_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
-  Value(i64_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
-  Value(u64_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
-  Value(float x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
-  Value(double d) noexcept : type_(ValueType::NUMERIC) { as_.numeric = d; }
-  Value(BaseObject* o) noexcept : type_(ValueType::OBJECT) { as_.object = o; }
+  ObjValue(void) noexcept {}
+  ObjValue(nil_t) noexcept {}
+  ObjValue(bool b) noexcept : type_(ValueType::BOOLEAN) { as_.boolean = b; }
+  ObjValue(i8_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
+  ObjValue(u8_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
+  ObjValue(i16_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
+  ObjValue(u16_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
+  ObjValue(i32_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
+  ObjValue(u32_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
+  ObjValue(i64_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
+  ObjValue(u64_t x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
+  ObjValue(float x) noexcept : type_(ValueType::NUMERIC) { set_numeric(x); }
+  ObjValue(double d) noexcept : type_(ValueType::NUMERIC) { as_.numeric = d; }
+  ObjValue(BaseObject* o) noexcept : type_(ValueType::OBJECT) { as_.object = o; }
 
-  Value(const Value& r) noexcept
+  ObjValue(const ObjValue& r) noexcept
     : type_(r.type_) {
     if (type_ == ValueType::OBJECT)
       as_.object = r.as_.object;
@@ -122,7 +246,7 @@ public:
       as_.numeric = r.as_.numeric;
   }
 
-  Value(Value&& r) noexcept
+  ObjValue(ObjValue&& r) noexcept
     : type_(std::move(r.type_)) {
     if (type_ == ValueType::OBJECT)
       as_.object = std::move(r.as_.object);
@@ -130,7 +254,7 @@ public:
       as_.numeric = std::move(r.as_.numeric);
   }
 
-  inline Value& operator=(const Value& r) noexcept {
+  inline ObjValue& operator=(const ObjValue& r) noexcept {
     if (this != &r) {
       type_ = r.type_;
       if (type_ == ValueType::OBJECT)
@@ -141,7 +265,7 @@ public:
     return *this;
   }
 
-  inline Value& operator=(Value&& r) noexcept {
+  inline ObjValue& operator=(ObjValue&& r) noexcept {
     if (this != &r) {
       type_ = std::move(r.type_);
       if (type_ == ValueType::OBJECT)
@@ -152,19 +276,19 @@ public:
     return *this;
   }
 
-  inline bool operator>(const Value& r) const noexcept {
+  inline bool operator>(const ObjValue& r) const noexcept {
     return as_.numeric > r.as_.numeric;
   }
 
-  inline bool operator>=(const Value& r) const noexcept {
+  inline bool operator>=(const ObjValue& r) const noexcept {
     return as_.numeric >= r.as_.numeric;
   }
 
-  inline bool operator<(const Value& r) const noexcept {
+  inline bool operator<(const ObjValue& r) const noexcept {
     return as_.numeric < r.as_.numeric;
   }
 
-  inline bool operator<=(const Value& r) const noexcept {
+  inline bool operator<=(const ObjValue& r) const noexcept {
     return as_.numeric <= r.as_.numeric;
   }
 
@@ -172,7 +296,7 @@ public:
     return !is_truthy();
   }
 
-  inline Value operator-(void) const noexcept {
+  inline ObjValue operator-(void) const noexcept {
     return -as_numeric();
   }
 
@@ -195,7 +319,7 @@ public:
 
   StringObject* as_string(void) const;
   const char* as_cstring(void) const;
-  NativeTp as_native(void) const;
+  NativeObject* as_native(void) const;
   FunctionObject* as_function(void) const;
   UpvalueObject* as_upvalue(void) const;
   ClosureObject* as_closure(void) const;
@@ -203,11 +327,17 @@ public:
   InstanceObject* as_instance(void) const;
   BoundMehtodObject* as_bound_method(void) const;
 
-  bool operator==(const Value& r) const;
-  bool operator!=(const Value& r) const;
+  bool operator==(const ObjValue& r) const;
+  bool operator!=(const ObjValue& r) const;
   bool is_truthy(void) const;
   str_t stringify(void) const;
 };
+
+#if defined(NAN_TAGGING)
+using Value = TagValue;
+#else
+using Value = ObjValue;
+#endif
 
 using NativeFn = std::function<Value (int argc, Value* args)>;
 

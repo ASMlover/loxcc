@@ -326,8 +326,8 @@ InterpretRet VM::run(void) {
   push(a op b);\
 } while (false)
 
-  for (;;) {
 #if defined(TRACE_EXEC)
+# define TRACE_EXEC_INSTRUCTION() do {
     std::cout << "          ";
     for (auto& v : stack_)
       std::cout << "[" << v << "]";
@@ -335,259 +335,325 @@ InterpretRet VM::run(void) {
 
     frame->frame_chunk()->dis_ins(
         Xt::as_type<int>(frame->ip() - frame->frame_chunk()->codes()));
+  } while (false)
+#else
+# define TRACE_EXEC_INSTRUCTION() ((void)0)
 #endif
 
-    switch (auto ins = Xt::as_type<Code>(_RDBYTE())) {
-    case Code::CONSTANT: push(_RDCONST()); break;
-    case Code::NIL: push(nullptr); break;
-    case Code::TRUE: push(true); break;
-    case Code::FALSE: push(false); break;
-    case Code::POP: pop(); break;
-    case Code::DEF_GLOBAL:
-      {
-        StringObject* name = _RDSTRING();
-        globals_[name->cstr()] = peek(0);
-        pop();
-      } break;
-    case Code::GET_GLOBAL:
-      {
-        StringObject* name = _RDSTRING();
-        if (auto it = globals_.find(name->cstr()); it != globals_.end()) {
-          push(it->second);
-        }
-        else {
-          runtime_error("name `%s` is not defined", name->cstr());
-          return InterpretRet::RUNTIME_ERR;
-        }
-      } break;
-    case Code::SET_GLOBAL:
-      {
-        StringObject* name = _RDSTRING();
-        if (auto it = globals_.find(name->cstr()); it == globals_.end()) {
-          runtime_error("name `%s` is not defined", name->cstr());
-          return InterpretRet::RUNTIME_ERR;
-        }
-        else {
-          globals_[name->cstr()] = peek(0);
-        }
-      } break;
-    case Code::GET_LOCAL:
-      {
-        u8_t slot = _RDBYTE();
-        push(stack_[Xt::as_type<sz_t>(frame->begpos() + slot)]);
-      } break;
-    case Code::SET_LOCAL:
-      {
-        u8_t slot = _RDBYTE();
-        stack_[Xt::as_type<sz_t>(frame->begpos() + slot)] = peek(0);
-      } break;
-    case Code::GET_UPVALUE:
-      {
-        u8_t slot = _RDBYTE();
-        push(*frame->closure()->get_upvalue(slot)->value());
-      } break;
-    case Code::SET_UPVALUE:
-      {
-        u8_t slot = _RDBYTE();
-        frame->closure()->get_upvalue(slot)->set_value_withref(peek(0));
-      } break;
-    case Code::GET_ATTR:
-      {
-        if (!peek(0).is_instance()) {
-          runtime_error("only instance objects have attributes");
-          return InterpretRet::RUNTIME_ERR;
-        }
+#if defined(COMPUTED_GOTOS)
+  static void* _dispatchs[] = {
+# undef BYTECC_CODEF
+# define BYTECC_CODEF(c) &&__code_##c,
+# include "bytecc_codes.hh"
+  };
+# define INTERPRET_LOOP() DISPATCH();
+# define CASE_CODE(name)  __code_##name
+# define DISPATCH()       do {\
+    TRACE_EXEC_INSTRUCTION();\
+    goto *_dispatchs[Xt::as_type<int>(ins = Xt::as_type<Code>(_RDBYTE()))];\
+  } while (false)
+#else
+# define INTERPRET_LOOP()\
+  __loop:\
+    TRACE_EXEC_INSTRUCTION();\
+    switch (ins = Xt::as_type<Code>(_RDBYTE()))
+# define CASE_CODE(name)  case Code::##name
+# define DISPATCH()       goto __loop
+#endif
 
-        InstanceObject* inst = peek(0).as_instance();
-        StringObject* name = _RDSTRING();
-        if (auto attr = inst->get_attr(name); attr) {
-          pop(); // pop out instance
-          push(*attr);
-          break;
-        }
-        if (!bind_method(inst->cls(), name))
-          return InterpretRet::RUNTIME_ERR;
-      } break;
-    case Code::SET_ATTR:
-      {
-        if (!peek(1).is_instance()) {
-          runtime_error("only instance objects have attributes");
-          return InterpretRet::RUNTIME_ERR;
-        }
+  Code ins;
+  INTERPRET_LOOP() {
+    CASE_CODE(CONSTANT): push(_RDCONST()); DISPATCH();
+    CASE_CODE(NIL): push(nullptr); DISPATCH();
+    CASE_CODE(TRUE): push(true); DISPATCH();
+    CASE_CODE(FALSE): push(false); DISPATCH();
+    CASE_CODE(POP): pop(); DISPATCH();
+    CASE_CODE(DEF_GLOBAL):
+    {
+      StringObject* name = _RDSTRING();
+      globals_[name->cstr()] = peek(0);
+      pop();
 
-        InstanceObject* inst = peek(1).as_instance();
-        inst->set_attr(_RDSTRING(), peek(0));
-        Value value = pop();
-        pop(); // pop instance
-        push(value);
-      } break;
-    case Code::GET_SUPER:
-      {
-        StringObject* name = _RDSTRING();
-        ClassObject* superclass = pop().as_class();
-        if (!bind_method(superclass, name))
-          return InterpretRet::RUNTIME_ERR;
-      } break;
-    case Code::EQ:
-      {
-        Value b = pop();
-        Value a = pop();
-        push(a == b);
-      } break;
-    case Code::NE:
-      {
-        Value b = pop();
-        Value a = pop();
-        push(a != b);
-      } break;
-    case Code::GT: _BINARYOP(>); break;
-    case Code::GE: _BINARYOP(>=); break;
-    case Code::LT: _BINARYOP(<); break;
-    case Code::LE: _BINARYOP(<=); break;
-    case Code::ADD:
-      {
-        if (peek(0).is_string() && peek(1).is_string()) {
-          StringObject* b = peek(0).as_string();
-          StringObject* a = peek(1).as_string();
-          StringObject* s = StringObject::concat(*this, a, b);
-          pop();
-          pop();
-          push(s);
-        }
-        else if (peek(0).is_numeric() && peek(1).is_numeric()) {
-          double b = pop().as_numeric();
-          double a = pop().as_numeric();
-          push(a + b);
-        }
-        else {
-          runtime_error("operands must be two strings or two numerics");
-          return InterpretRet::RUNTIME_ERR;
-        }
-      } break;
-    case Code::SUB: _BINARYOP(-); break;
-    case Code::MUL: _BINARYOP(*); break;
-    case Code::DIV: _BINARYOP(/); break;
-    case Code::NOT: push(!pop()); break;
-    case Code::NEG:
-      {
-        if (!peek(0).is_numeric()) {
-          runtime_error("operand must be a numeric");
-          return InterpretRet::RUNTIME_ERR;
-        }
-        push(-pop());
-      } break;
-    case Code::PRINT: std::cout << pop() << std::endl; break;
-    case Code::JUMP: frame->add_ip(_RDWORD()); break;
-    case Code::JUMP_IF_FALSE:
-      {
-        u16_t offset = _RDWORD();
-        if (!peek(0))
-          frame->add_ip(offset);
-      } break;
-    case Code::LOOP: frame->sub_ip(_RDWORD()); break;
-    case Code::CALL_0:
-    case Code::CALL_1:
-    case Code::CALL_2:
-    case Code::CALL_3:
-    case Code::CALL_4:
-    case Code::CALL_5:
-    case Code::CALL_6:
-    case Code::CALL_7:
-    case Code::CALL_8:
-      {
-        int argc = ins - Code::CALL_0;
-        if (!call_value(peek(argc), argc))
-          return InterpretRet::RUNTIME_ERR;
-        frame = &frames_.back();
-      } break;
-    case Code::INVOKE_0:
-    case Code::INVOKE_1:
-    case Code::INVOKE_2:
-    case Code::INVOKE_3:
-    case Code::INVOKE_4:
-    case Code::INVOKE_5:
-    case Code::INVOKE_6:
-    case Code::INVOKE_7:
-    case Code::INVOKE_8:
-      {
-        StringObject* method_name = _RDSTRING();
-        int argc = ins - Code::INVOKE_0;
-        if (!invoke(method_name, argc))
-          return InterpretRet::RUNTIME_ERR;
-        frame = &frames_.back();
-      } break;
-    case Code::SUPER_0:
-    case Code::SUPER_1:
-    case Code::SUPER_2:
-    case Code::SUPER_3:
-    case Code::SUPER_4:
-    case Code::SUPER_5:
-    case Code::SUPER_6:
-    case Code::SUPER_7:
-    case Code::SUPER_8:
-      {
-        StringObject* method_name = _RDSTRING();
-        int argc = ins - Code::SUPER_0;
-        ClassObject* superclass = pop().as_class();
-        if (!invoke_from_class(superclass, method_name, argc))
-          return InterpretRet::RUNTIME_ERR;
-        frame = &frames_.back();
-      } break;
-    case Code::CLOSURE:
-      {
-        // create the closure and push it on the stack before creating
-        // upvalues so that is does not get collected
-        FunctionObject* fn = _RDCONST().as_function();
-        ClosureObject* closure = ClosureObject::create(*this, fn);
-        push(closure);
-
-        // capture upvalues
-        for (int i = 0; i < closure->upvalues_count(); ++i) {
-          u8_t is_local = _RDBYTE();
-          u8_t index = _RDBYTE();
-          if (is_local) {
-            // make an new upvalue to close over the parent's local variable
-            closure->set_upvalue(i, capture_upvalue(
-                  &stack_[Xt::as_type<int>(frame->begpos() + index)]));
-          }
-          else {
-            // use the same upvalue as the current call frame
-            closure->set_upvalue(i, frame->closure()->get_upvalue(index));
-          }
-        }
-      } break;
-    case Code::CLOSE_UPVALUE: close_upvalues(&stack_.back()); pop(); break;
-    case Code::RETURN:
-      {
-        Value r = pop();
-        if (frame->begpos() < 0 || frame->begpos() >= stack_.size())
-          close_upvalues(nullptr);
-        else
-          close_upvalues(&stack_[frame->begpos()]);
-
-        frames_.pop_back();
-        if (frames_.empty())
-          return InterpretRet::OK;
-
-        stack_.resize(frame->begpos());
-        push(r);
-        frame = &frames_.back();
-      } break;
-    case Code::CLASS: push(ClassObject::create(*this, _RDSTRING())); break;
-    case Code::SUBCLASS:
-      {
-        const Value& superclass = peek(1);
-        if (!superclass.is_class()) {
-          runtime_error("superclass must be a class");
-          return InterpretRet::RUNTIME_ERR;
-        }
-
-        ClassObject* cls = peek(0).as_class();
-        cls->inherit_from(superclass.as_class());
-        pop();
-      } break;
-    case Code::METHOD: define_method(_RDSTRING()); break;
+      DISPATCH();
     }
+    CASE_CODE(GET_GLOBAL):
+    {
+      StringObject* name = _RDSTRING();
+      if (auto it = globals_.find(name->cstr()); it != globals_.end()) {
+        push(it->second);
+      }
+      else {
+        runtime_error("name `%s` is not defined", name->cstr());
+        return InterpretRet::RUNTIME_ERR;
+      }
+
+      DISPATCH();
+    }
+    CASE_CODE(SET_GLOBAL):
+    {
+      StringObject* name = _RDSTRING();
+      if (auto it = globals_.find(name->cstr()); it == globals_.end()) {
+        runtime_error("name `%s` is not defined", name->cstr());
+        return InterpretRet::RUNTIME_ERR;
+      }
+      else {
+        globals_[name->cstr()] = peek(0);
+      }
+
+      DISPATCH();
+    }
+    CASE_CODE(GET_LOCAL):
+    {
+      u8_t slot = _RDBYTE();
+      push(stack_[Xt::as_type<sz_t>(frame->begpos() + slot)]);
+
+      DISPATCH();
+    }
+    CASE_CODE(SET_LOCAL):
+    {
+      u8_t slot = _RDBYTE();
+      stack_[Xt::as_type<sz_t>(frame->begpos() + slot)] = peek(0);
+
+      DISPATCH();
+    }
+    CASE_CODE(GET_UPVALUE):
+    {
+      u8_t slot = _RDBYTE();
+      push(*frame->closure()->get_upvalue(slot)->value());
+
+      DISPATCH();
+    }
+    CASE_CODE(SET_UPVALUE):
+    {
+      u8_t slot = _RDBYTE();
+      frame->closure()->get_upvalue(slot)->set_value_withref(peek(0));
+
+      DISPATCH();
+    }
+    CASE_CODE(GET_ATTR):
+    {
+      if (!peek(0).is_instance()) {
+        runtime_error("only instance objects have attributes");
+        return InterpretRet::RUNTIME_ERR;
+      }
+
+      InstanceObject* inst = peek(0).as_instance();
+      StringObject* name = _RDSTRING();
+      if (auto attr = inst->get_attr(name); attr) {
+        pop(); // pop out instance
+        push(*attr);
+        break;
+      }
+      if (!bind_method(inst->cls(), name))
+        return InterpretRet::RUNTIME_ERR;
+
+      DISPATCH();
+    }
+    CASE_CODE(SET_ATTR):
+    {
+      if (!peek(1).is_instance()) {
+        runtime_error("only instance objects have attributes");
+        return InterpretRet::RUNTIME_ERR;
+      }
+
+      InstanceObject* inst = peek(1).as_instance();
+      inst->set_attr(_RDSTRING(), peek(0));
+      Value value = pop();
+      pop(); // pop instance
+      push(value);
+
+      DISPATCH();
+    }
+    CASE_CODE(GET_SUPER):
+    {
+      StringObject* name = _RDSTRING();
+      ClassObject* superclass = pop().as_class();
+      if (!bind_method(superclass, name))
+        return InterpretRet::RUNTIME_ERR;
+
+      DISPATCH();
+    }
+    CASE_CODE(EQ):
+    {
+      Value b = pop();
+      Value a = pop();
+      push(a == b);
+
+      DISPATCH();
+    }
+    CASE_CODE(NE):
+    {
+      Value b = pop();
+      Value a = pop();
+      push(a != b);
+
+      DISPATCH();
+    }
+    CASE_CODE(GT): _BINARYOP(>); DISPATCH();
+    CASE_CODE(GE): _BINARYOP(>=); DISPATCH();
+    CASE_CODE(LT): _BINARYOP(<); DISPATCH();
+    CASE_CODE(LE): _BINARYOP(<=); DISPATCH();
+    CASE_CODE(ADD):
+    {
+      if (peek(0).is_string() && peek(1).is_string()) {
+        StringObject* b = peek(0).as_string();
+        StringObject* a = peek(1).as_string();
+        StringObject* s = StringObject::concat(*this, a, b);
+        pop();
+        pop();
+        push(s);
+      }
+      else if (peek(0).is_numeric() && peek(1).is_numeric()) {
+        double b = pop().as_numeric();
+        double a = pop().as_numeric();
+        push(a + b);
+      }
+      else {
+        runtime_error("operands must be two strings or two numerics");
+        return InterpretRet::RUNTIME_ERR;
+      }
+
+      DISPATCH();
+    }
+    CASE_CODE(SUB): _BINARYOP(-); DISPATCH();
+    CASE_CODE(MUL): _BINARYOP(*); DISPATCH();
+    CASE_CODE(DIV): _BINARYOP(/); DISPATCH();
+    CASE_CODE(NOT): push(!pop()); DISPATCH();
+    CASE_CODE(NEG):
+    {
+      if (!peek(0).is_numeric()) {
+        runtime_error("operand must be a numeric");
+        return InterpretRet::RUNTIME_ERR;
+      }
+      push(-pop());
+
+      DISPATCH();
+    }
+    CASE_CODE(PRINT): std::cout << pop() << std::endl; DISPATCH();
+    CASE_CODE(JUMP): frame->add_ip(_RDWORD()); DISPATCH();
+    CASE_CODE(JUMP_IF_FALSE):
+    {
+      u16_t offset = _RDWORD();
+      if (!peek(0))
+        frame->add_ip(offset);
+
+      DISPATCH();
+    }
+    CASE_CODE(LOOP): frame->sub_ip(_RDWORD()); DISPATCH();
+    CASE_CODE(CALL_0):
+    CASE_CODE(CALL_1):
+    CASE_CODE(CALL_2):
+    CASE_CODE(CALL_3):
+    CASE_CODE(CALL_4):
+    CASE_CODE(CALL_5):
+    CASE_CODE(CALL_6):
+    CASE_CODE(CALL_7):
+    CASE_CODE(CALL_8):
+    {
+      int argc = ins - Code::CALL_0;
+      if (!call_value(peek(argc), argc))
+        return InterpretRet::RUNTIME_ERR;
+      frame = &frames_.back();
+
+      DISPATCH();
+    }
+    CASE_CODE(INVOKE_0):
+    CASE_CODE(INVOKE_1):
+    CASE_CODE(INVOKE_2):
+    CASE_CODE(INVOKE_3):
+    CASE_CODE(INVOKE_4):
+    CASE_CODE(INVOKE_5):
+    CASE_CODE(INVOKE_6):
+    CASE_CODE(INVOKE_7):
+    CASE_CODE(INVOKE_8):
+    {
+      StringObject* method_name = _RDSTRING();
+      int argc = ins - Code::INVOKE_0;
+      if (!invoke(method_name, argc))
+        return InterpretRet::RUNTIME_ERR;
+      frame = &frames_.back();
+
+      DISPATCH();
+    }
+    CASE_CODE(SUPER_0):
+    CASE_CODE(SUPER_1):
+    CASE_CODE(SUPER_2):
+    CASE_CODE(SUPER_3):
+    CASE_CODE(SUPER_4):
+    CASE_CODE(SUPER_5):
+    CASE_CODE(SUPER_6):
+    CASE_CODE(SUPER_7):
+    CASE_CODE(SUPER_8):
+    {
+      StringObject* method_name = _RDSTRING();
+      int argc = ins - Code::SUPER_0;
+      ClassObject* superclass = pop().as_class();
+      if (!invoke_from_class(superclass, method_name, argc))
+        return InterpretRet::RUNTIME_ERR;
+      frame = &frames_.back();
+
+      DISPATCH();
+    }
+    CASE_CODE(CLOSURE):
+    {
+      // create the closure and push it on the stack before creating
+      // upvalues so that is does not get collected
+      FunctionObject* fn = _RDCONST().as_function();
+      ClosureObject* closure = ClosureObject::create(*this, fn);
+      push(closure);
+
+      // capture upvalues
+      for (int i = 0; i < closure->upvalues_count(); ++i) {
+        u8_t is_local = _RDBYTE();
+        u8_t index = _RDBYTE();
+        if (is_local) {
+          // make an new upvalue to close over the parent's local variable
+          closure->set_upvalue(i, capture_upvalue(
+                &stack_[Xt::as_type<int>(frame->begpos() + index)]));
+        }
+        else {
+          // use the same upvalue as the current call frame
+          closure->set_upvalue(i, frame->closure()->get_upvalue(index));
+        }
+      }
+
+      DISPATCH();
+    }
+    CASE_CODE(CLOSE_UPVALUE): close_upvalues(&stack_.back()); pop(); DISPATCH();
+    CASE_CODE(RETURN):
+    {
+      Value r = pop();
+      if (frame->begpos() < 0 || frame->begpos() >= stack_.size())
+        close_upvalues(nullptr);
+      else
+        close_upvalues(&stack_[frame->begpos()]);
+
+      frames_.pop_back();
+      if (frames_.empty())
+        return InterpretRet::OK;
+
+      stack_.resize(frame->begpos());
+      push(r);
+      frame = &frames_.back();
+
+      DISPATCH();
+    }
+    CASE_CODE(CLASS): push(ClassObject::create(*this, _RDSTRING())); DISPATCH();
+    CASE_CODE(SUBCLASS):
+    {
+      const Value& superclass = peek(1);
+      if (!superclass.is_class()) {
+        runtime_error("superclass must be a class");
+        return InterpretRet::RUNTIME_ERR;
+      }
+
+      ClassObject* cls = peek(0).as_class();
+      cls->inherit_from(superclass.as_class());
+      pop();
+
+      DISPATCH();
+    }
+    CASE_CODE(METHOD): define_method(_RDSTRING()); DISPATCH();
   }
 
 #undef _BINARYOP

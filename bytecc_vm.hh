@@ -45,6 +45,7 @@ class CallFrame;
 class GlobalCompiler;
 
 class VM final : private UnCopyable {
+  static constexpr sz_t kDefaultCap = 256;
   static constexpr sz_t kMaxFrames = 256;
   static constexpr sz_t kHeapGrowFactor = 2;
   static constexpr sz_t kGCThresholds = 1 << 10;

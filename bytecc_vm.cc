@@ -59,6 +59,8 @@ public:
 
 VM::VM(void) noexcept
   : gcompiler_(new GlobalCompiler()) {
+  stack_.reserve(kDefaultCap);
+
   define_native("clock", [](int argc, Value* args) -> Value {
         return std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;

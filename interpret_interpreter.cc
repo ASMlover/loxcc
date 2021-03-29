@@ -291,7 +291,7 @@ void Interpreter::visit(const ClassStmtPtr& stmt) {
 }
 
 void Interpreter::visit(const FunctionStmtPtr& stmt) {
-  Value fun = std::make_shared<Function>(stmt, environment_, false);
+  Value fun(std::make_shared<Function>(stmt, environment_, false));
   environment_->define(stmt->name(), fun);
 }
 

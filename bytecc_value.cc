@@ -24,6 +24,7 @@
 // LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 // ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
+#include <cstring>
 #include "bytecc_chunk.hh"
 #include "bytecc_vm.hh"
 #include "bytecc_value.hh"
@@ -299,7 +300,7 @@ ClosureObject::ClosureObject(FunctionObject* fn) noexcept
   : BaseObject(ObjType::CLOSURE)
   , fn_(fn)
   , upvalues_count_(fn->upvalues_count()) {
-  if (upvalues_ > 0) {
+  if (upvalues_count_ > 0) {
     upvalues_ = new UpvalueObject*[upvalues_count_];
     for (int i = 0; i < upvalues_count_; ++i)
       upvalues_[i] = nullptr;

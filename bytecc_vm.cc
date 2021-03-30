@@ -359,7 +359,7 @@ InterpretRet VM::run(void) {
   __loop:\
     TRACE_EXEC_INSTRUCTION();\
     switch (ins = Xt::as_type<Code>(_RDBYTE()))
-# define CASE_CODE(name)  case Code::##name
+# define CASE_CODE(name)  case Code::name
 # define DISPATCH()       goto __loop
 #endif
 
@@ -444,7 +444,7 @@ InterpretRet VM::run(void) {
       if (auto attr = inst->get_attr(name); attr) {
         pop(); // pop out instance
         push(*attr);
-        break;
+        DISPATCH();
       }
       if (!bind_method(inst->cls(), name))
         return InterpretRet::RUNTIME_ERR;
@@ -625,7 +625,7 @@ InterpretRet VM::run(void) {
     CASE_CODE(RETURN):
     {
       Value r = pop();
-      if (frame->begpos() < 0 || frame->begpos() >= stack_.size())
+      if (frame->begpos() < 0 || frame->begpos() >= Xt::as_type<int>(stack_.size()))
         close_upvalues(nullptr);
       else
         close_upvalues(&stack_[frame->begpos()]);

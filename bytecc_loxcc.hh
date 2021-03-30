@@ -36,7 +36,7 @@ class VM;
 class Loxcc final : public BaseLoxcc {
   std::shared_ptr<VM> vm_;
 
-  virtual void eval_impl(const str_t& source_bytes) override;
+  virtual int eval_impl(const str_t& source_bytes) override;
 public:
   Loxcc(void) noexcept;
 };

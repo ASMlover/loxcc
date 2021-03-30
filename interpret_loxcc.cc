@@ -34,10 +34,11 @@ Loxcc::Loxcc(void) noexcept
   , interp_(new Interpreter(err_report_)) {
 }
 
-void Loxcc::eval_impl(const str_t& source_bytes) {
+int Loxcc::eval_impl(const str_t& source_bytes) {
   interp_->interpret(source_bytes);
   if (err_report_.had_error())
-    std::exit(-1);
+    return -1;
+  return 0;
 }
 
 }

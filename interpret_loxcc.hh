@@ -38,7 +38,7 @@ class Loxcc final : public BaseLoxcc {
   ErrorReport err_report_;
   std::shared_ptr<Interpreter> interp_;
 
-  virtual void eval_impl(const str_t& source_bytes) override;
+  virtual int eval_impl(const str_t& source_bytes) override;
 public:
   Loxcc(void) noexcept;
 };

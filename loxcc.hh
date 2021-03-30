@@ -34,7 +34,7 @@ class BaseLoxcc : private UnCopyable {
   void eval_with_repl(void);
   void eval_with_file(const str_t& fname);
 
-  virtual void eval_impl(const str_t& source_bytes) = 0;
+  virtual int eval_impl(const str_t& source_bytes) = 0;
 public:
   void eval(int argc, char** argv);
 };

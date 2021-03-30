@@ -33,12 +33,13 @@ Loxcc::Loxcc(void) noexcept
   : vm_(new VM()) {
 }
 
-void Loxcc::eval_impl(const str_t& source_bytes) {
+int Loxcc::eval_impl(const str_t& source_bytes) {
   InterpretRet r = vm_->interpret(source_bytes);
   if (r == InterpretRet::COMPILE_ERR)
-    std::exit(-2);
+    return -2;
   if (r == InterpretRet::RUNTIME_ERR)
-    std::exit(-3);
+    return -3;
+  return 0;
 }
 
 }

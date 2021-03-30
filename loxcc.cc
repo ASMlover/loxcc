@@ -62,7 +62,8 @@ void BaseLoxcc::eval_with_file(const str_t& fname) {
     std::stringstream ss;
     ss << fp.rdbuf();
 
-    eval_impl(ss.str());
+    if (int ec = eval_impl(ss.str()); ec != 0)
+      std::exit(ec);
   }
   else {
     std::cerr << "ERROR: LOAD `" << fname << "` FAILED ..." << std::endl;

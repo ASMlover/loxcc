@@ -38,31 +38,31 @@ class Lexer final : private UnCopyable {
   sz_t curpos_{};
   int lineno_{1};
 
-  inline bool isalpha(char c) const {
+  inline bool isalpha(char c) const noexcept {
     return std::isalpha(c) || c == '_';
   }
 
-  inline bool isalnum(char c) const {
+  inline bool isalnum(char c) const noexcept {
     return std::isalnum(c) || c == '_';
   }
 
-  inline bool isdigit(char c) const {
+  inline bool isdigit(char c) const noexcept {
     return std::isdigit(c);
   }
 
-  inline str_t gen_literal(sz_t begpos, sz_t endpos) const {
+  inline str_t gen_literal(sz_t begpos, sz_t endpos) const noexcept {
     return source_bytes_.substr(begpos, endpos - begpos);
   }
 
-  inline bool is_end(void) const {
+  inline bool is_end(void) const noexcept {
     return curpos_ >= source_bytes_.size();
   }
 
-  inline char advance(void) {
+  inline char advance(void) noexcept {
     return source_bytes_[curpos_++];
   }
 
-  inline bool match(char expected) {
+  inline bool match(char expected) noexcept {
     if (is_end() || source_bytes_[curpos_] != expected)
       return false;
 
@@ -70,23 +70,23 @@ class Lexer final : private UnCopyable {
     return true;
   }
 
-  inline char peek(void) const {
+  inline char peek(void) const noexcept {
     return curpos_ >= source_bytes_.size() ? 0 : source_bytes_[curpos_];
   }
 
-  inline char peek_next(void) const {
+  inline char peek_next(void) const noexcept {
     return curpos_ + 1 >= source_bytes_.size() ? 0 : source_bytes_[curpos_ + 1];
   }
 
-  inline Token make_token(TokenKind kind) const {
+  inline Token make_token(TokenKind kind) const noexcept {
     return Token(kind, gen_literal(begpos_, curpos_), lineno_);
   }
 
-  inline Token make_token(TokenKind kind, const str_t& literal) const {
+  inline Token make_token(TokenKind kind, const str_t& literal) const noexcept {
     return Token(kind, literal, lineno_);
   }
 
-  inline Token make_error(const str_t& message) const {
+  inline Token make_error(const str_t& message) const noexcept {
     return Token(TokenKind::TK_ERR, message, lineno_);
   }
 

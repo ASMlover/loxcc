@@ -88,23 +88,23 @@ public:
     return literal_ != r.literal_;
   }
 
-  inline TokenKind kind(void) const {
+  inline TokenKind kind(void) const noexcept {
     return kind_;
   }
 
-  inline const str_t& literal(void) const {
+  inline const str_t& literal(void) const noexcept {
     return literal_;
   }
 
-  inline int lineno(void) const {
+  inline int lineno(void) const noexcept {
     return lineno_;
   }
 
-  inline double as_numeric(void) const {
+  inline double as_numeric(void) const noexcept {
     return std::atof(literal_.c_str());
   }
 
-  inline str_t as_string(void) const {
+  inline str_t as_string(void) const noexcept {
     return literal_;
   }
 

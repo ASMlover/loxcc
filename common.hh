@@ -27,6 +27,8 @@
 #pragma once
 
 #include <cstdint>
+#include <iomanip>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -69,21 +71,21 @@ protected:
 
 namespace Xt {
   template <typename I, typename E>
-  inline I as_type(E x) { return static_cast<I>(x); }
+  inline I as_type(E x) noexcept { return static_cast<I>(x); }
 
   template <typename T>
-  inline T* as_ptr(const T* x) { return const_cast<T*>(x); }
+  inline T* as_ptr(const T* x) noexcept { return const_cast<T*>(x); }
 
   template <typename T, typename S>
-  inline T* cast(S* x) { return static_cast<T*>(x); }
+  inline T* cast(S* x) noexcept { return static_cast<T*>(x); }
 
   template <typename T, typename S>
-  inline T* down(S* x) { return dynamic_cast<T*>(x); }
+  inline T* down(S* x) noexcept { return dynamic_cast<T*>(x); }
 
   template <typename T, typename S>
-  inline T* const_down(const S* x) { return down<T>(const_cast<S*>(x)); }
+  inline T* const_down(const S* x) noexcept { return down<T>(const_cast<S*>(x)); }
 
-  inline u32_t hasher(const char* s, int n) {
+  inline u32_t hasher(const char* s, int n) noexcept {
     // FNV-1a hash. See: http://www.isthe.com/chongo/tech/comp/fnv/
     u32_t hash = 2166136261u;
     for (int i = 0; i < n; ++i) {
@@ -94,11 +96,11 @@ namespace Xt {
   }
 
   template <typename T>
-  inline double to_decimal(T x) { return static_cast<double>(x); }
+  inline double to_decimal(T x) noexcept { return static_cast<double>(x); }
 
-  inline str_t to_string(double d) {
+  inline str_t to_string(double d) noexcept {
     std::stringstream ss;
-    ss << d;
+    ss << std::setprecision(std::numeric_limits<double>::max_digits10) << d;
     return ss.str();
   }
 }

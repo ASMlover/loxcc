@@ -32,14 +32,17 @@
 namespace loxcc {
 
 enum class TokenKind {
+  KINDS_BEG = -1,
+
 #undef TOKDEF
 #define TOKDEF(k, s) k,
 #include "kinds_def.hh"
-  NUM_KINDS
+
+  KINDS_END,
 };
 
-str_t get_token_name(TokenKind kind);
-TokenKind get_keyword_kind(const str_t& kw);
+const char* get_token_name(TokenKind kind) noexcept;
+TokenKind get_keyword_kind(const str_t& kw) noexcept;
 
 class Token final : public Copyable {
   TokenKind kind_{TokenKind::TK_ERR};
@@ -108,14 +111,14 @@ public:
     return literal_;
   }
 
-  str_t stringify(void) const;
+  str_t stringify(void) const noexcept;
 
-  static Token make_custom(const str_t& literal) {
+  static Token make_custom(const str_t& literal) noexcept {
     return Token(TokenKind::TK_STRING, literal);
   }
 };
 
-inline std::ostream& operator<<(std::ostream& out, const Token& tok) {
+inline std::ostream& operator<<(std::ostream& out, const Token& tok) noexcept {
   return out << tok.stringify();
 }
 

@@ -44,19 +44,19 @@ static const std::unordered_map<str_t, TokenKind> kKeywords = {
 #include "kinds_def.hh"
 };
 
-str_t get_token_name(TokenKind kind) {
-  if (kind >= TokenKind::TK_LPAREN && kind < TokenKind::NUM_KINDS)
+const char* get_token_name(TokenKind kind) noexcept {
+  if (kind >= TokenKind::TK_LPAREN && kind < TokenKind::KINDS_END)
     return kNames[Xt::as_type<int>(kind)];
   return nullptr;
 }
 
-TokenKind get_keyword_kind(const str_t& kw) {
+TokenKind get_keyword_kind(const str_t& kw) noexcept {
   if (auto kw_iter = kKeywords.find(kw); kw_iter != kKeywords.end())
     return kw_iter->second;
   return TokenKind::TK_IDENTIFIER;
 }
 
-str_t Token::stringify(void) const {
+str_t Token::stringify(void) const noexcept {
   std::stringstream ss;
 
   ss << std::left << std::setw(20) << get_token_name(kind_) << "|"

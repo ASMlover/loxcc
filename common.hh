@@ -69,6 +69,14 @@ protected:
   ~UnCopyable(void) noexcept = default;
 };
 
+template <typename Object> class Singleton : private UnCopyable {
+public:
+  static Object& get_instance() noexcept {
+    static Object ins;
+    return ins;
+  }
+};
+
 namespace Xt {
   template <typename I, typename E>
   inline I as_type(E x) noexcept { return static_cast<I>(x); }

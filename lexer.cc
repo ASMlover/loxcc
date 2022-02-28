@@ -41,24 +41,27 @@ Token Lexer::next_token(void) {
   if (isdigit(c))
     return make_numeric();
 
+#define _MKTOK(c, k) case c: return make_token(TokenKind::TK_##k)
   switch (c) {
-  case '(': return make_token(TokenKind::TK_LPAREN);
-  case ')': return make_token(TokenKind::TK_RPAREN);
-  case '{': return make_token(TokenKind::TK_LBRACE);
-  case '}': return make_token(TokenKind::TK_RBRACE);
-  case ',': return make_token(TokenKind::TK_COMMA);
-  case '.': return make_token(TokenKind::TK_DOT);
-  case '-': return make_token(TokenKind::TK_MINUS);
-  case '+': return make_token(TokenKind::TK_PLUS);
-  case ';': return make_token(TokenKind::TK_SEMI);
-  case '/': return make_token(TokenKind::TK_SLASH);
-  case '*': return make_token(TokenKind::TK_STAR);
+  _MKTOK('(', LPAREN);
+  _MKTOK(')', RPAREN);
+  _MKTOK('{', LBRACE);
+  _MKTOK('}', RBRACE);
+  _MKTOK(',', COMMA);
+  _MKTOK('.', DOT);
+  _MKTOK('-', MINUS);
+  _MKTOK('+', PLUS);
+  _MKTOK(';', SEMI);
+  _MKTOK('/', SLASH);
+  _MKTOK('*', STAR);
   case '!': return make_token(match('=') ? TokenKind::TK_BANGEQ : TokenKind::TK_BANG);
   case '=': return make_token(match('=') ? TokenKind::TK_EQEQ : TokenKind::TK_EQ);
   case '>': return make_token(match('=') ? TokenKind::TK_GTEQ : TokenKind::TK_GT);
   case '<': return make_token(match('=') ? TokenKind::TK_LTEQ : TokenKind::TK_LT);
   case '"': return make_string();
   }
+#undef _MKTOK
+
   return make_error("unexpected charactor");
 }
 
@@ -106,6 +109,8 @@ Token Lexer::make_numeric(void) {
 }
 
 Token Lexer::make_string(void) {
+#define _MKCHAR(x, y) case x: c = y; advance(); break
+
   str_t literal;
   while (!is_end() && peek() != '"') {
     char c = peek();
@@ -113,23 +118,24 @@ Token Lexer::make_string(void) {
     case '\n': ++lineno_; break;
     case '\\':
       switch (peek_next()) {
-      case '"': c = '"'; advance(); break;
-      case '\\': c = '\\'; advance(); break;
-      case '%': c = '%'; advance(); break;
-      case '0': c = '\0'; advance(); break;
-      case 'a': c = '\a'; advance(); break;
-      case 'b': c = '\b'; advance(); break;
-      case 'f': c = '\f'; advance(); break;
-      case 'n': c = '\n'; advance(); break;
-      case 'r': c = '\r'; advance(); break;
-      case 't': c = '\t'; advance(); break;
-      case 'v': c = '\v'; advance(); break;
+      _MKCHAR('"', '"');
+      _MKCHAR('\\', '\\');
+      _MKCHAR('%', '%');
+      _MKCHAR('0', '\0');
+      _MKCHAR('a', '\a');
+      _MKCHAR('b', '\b');
+      _MKCHAR('f', '\f');
+      _MKCHAR('n', '\n');
+      _MKCHAR('r', '\r');
+      _MKCHAR('t', '\t');
+      _MKCHAR('v', '\v');
       }
       break;
     }
     literal.push_back(c);
     advance();
   }
+#undef _MKCHAR
 
   if (is_end())
     return make_error("unterminated string");

@@ -32,22 +32,34 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include "platform.hh"
 
 namespace loxcc {
 
-using nil_t   = std::nullptr_t;
-using i8_t    = std::int8_t;
-using u8_t    = std::uint8_t;
-using i16_t   = std::int16_t;
-using u16_t   = std::uint16_t;
-using i32_t   = std::int32_t;
-using u32_t   = std::uint32_t;
-using i64_t   = std::int64_t;
-using u64_t   = std::uint64_t;
-using ssz_t   = std::int32_t;
-using sz_t    = std::size_t;
-using str_t   = std::string;
-using strv_t  = std::string_view;
+class LoxccSafe {};
+class LoxccUnsafe {};
+
+using nil_t     = std::nullptr_t;
+using byte_t    = std::uint8_t;
+using i8_t      = std::int8_t;
+using u8_t      = std::uint8_t;
+using i16_t     = std::int16_t;
+using u16_t     = std::uint16_t;
+using i32_t     = std::int32_t;
+using u32_t     = std::uint32_t;
+using i64_t     = std::int64_t;
+using u64_t     = std::uint64_t;
+#if defined(LOXCC_GNUC)
+  using ssz_t   = std::ssize_t;
+#else
+  using ssz_t   = std::int32_t;
+#endif
+using sz_t      = std::size_t;
+using str_t     = std::string;
+using strv_t    = std::string_view;
+using ss_t      = std::stringstream;
+using safe_t    = LoxccSafe;
+using unsafe_t  = LoxccUnsafe;
 
 class Copyable {
 protected:

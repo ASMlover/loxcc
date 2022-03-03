@@ -61,7 +61,12 @@ public:
   Value(u64_t x) noexcept : v_(Xt::to_decimal(x)) {}
   Value(float x) noexcept : v_(Xt::to_decimal(x)) {}
   Value(double d) noexcept : v_(d) {}
+#if defined(LOXCC_GNUC)
+  Value(long long x) noexcept : v_(Xt::to_decimal(x)) {}
+  Value(unsigned long long x) noexcept : v_(Xt::to_decimal(x)) {}
+#endif
   Value(const char* s) noexcept : v_(str_t(s)) {}
+  Value(strv_t s) noexcept : v_(str_t(s)) {}
   Value(const str_t& s) noexcept : v_(s) {}
   Value(const CallablePtr& c) noexcept : v_(c) {}
   Value(const InstancePtr& i) noexcept : v_(i) {}
@@ -80,18 +85,19 @@ public:
     return *this;
   }
 
-  inline bool is_nil(void) const { return std::holds_alternative<nil_t>(v_); }
-  inline bool is_boolean(void) const { return std::holds_alternative<bool>(v_); }
-  inline bool is_numeric(void) const { return std::holds_alternative<double>(v_); }
-  inline bool is_string(void) const { return std::holds_alternative<str_t>(v_); }
-  inline bool is_callable(void) const { return std::holds_alternative<CallablePtr>(v_); }
-  inline bool is_instance(void) const { return std::holds_alternative<InstancePtr>(v_); }
+  inline bool is_nil(void) const noexcept { return std::holds_alternative<nil_t>(v_); }
+  inline bool is_boolean(void) const noexcept { return std::holds_alternative<bool>(v_); }
+  inline bool is_numeric(void) const noexcept { return std::holds_alternative<double>(v_); }
+  inline bool is_string(void) const noexcept { return std::holds_alternative<str_t>(v_); }
+  inline bool is_callable(void) const noexcept { return std::holds_alternative<CallablePtr>(v_); }
+  inline bool is_instance(void) const noexcept { return std::holds_alternative<InstancePtr>(v_); }
 
-  inline bool as_boolean(void) const { return std::get<bool>(v_); }
-  inline double as_numeric(void) const { return std::get<double>(v_); }
-  inline str_t as_string(void) const { return std::get<str_t>(v_); }
-  inline CallablePtr as_callable(void) const { return std::get<CallablePtr>(v_); }
-  inline InstancePtr as_instance(void) const { return std::get<InstancePtr>(v_); }
+  inline bool as_boolean(void) const noexcept { return std::get<bool>(v_); }
+  inline double as_numeric(void) const noexcept { return std::get<double>(v_); }
+  template <typename T> inline T as_integer() const noexcept { return Xt::as_type<T>(as_numeric()); }
+  inline str_t as_string(void) const noexcept { return std::get<str_t>(v_); }
+  inline CallablePtr as_callable(void) const noexcept { return std::get<CallablePtr>(v_); }
+  inline InstancePtr as_instance(void) const noexcept { return std::get<InstancePtr>(v_); }
 
   inline bool operator==(const Value& r) const noexcept {
     if (is_numeric() && r.is_numeric())
@@ -117,14 +123,14 @@ public:
   inline Value operator-(void) const noexcept { return -as_numeric(); }
   inline Value operator!(void) const noexcept { return !is_truthy(); }
 
-  inline bool is_abs_equal(const Value& r) const { return v_ == r.v_; }
-  inline bool is_equal(const Value& r) const { return (this == &r) || (*this == r); }
+  inline bool is_abs_equal(const Value& r) const noexcept { return v_ == r.v_; }
+  inline bool is_equal(const Value& r) const noexcept { return (this == &r) || (*this == r); }
 
   bool is_truthy(void) const;
   str_t stringify(void) const;
 };
 
-inline std::ostream& operator<<(std::ostream& out, const Value& val) {
+inline std::ostream& operator<<(std::ostream& out, const Value& val) noexcept {
   return out << val.stringify();
 }
 

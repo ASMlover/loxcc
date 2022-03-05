@@ -131,10 +131,6 @@ int Chunk::dis_ins(int offset) {
   case Code::SUPER_7:
   case Code::SUPER_8: return const_insN(this, "SUPER_", offset, c - Code::SUPER_0);
   case Code::CLOSURE: return const_ins(this, "CLOSURE", offset);
-    // {
-    //   offset = const_ins(this, "CLOSURE", offset);
-    //   // TODO: print upvalues
-    // }
   case Code::CLOSE_UPVALUE: return simp_ins("CLOSE_UPVALUE", offset);
   case Code::RETURN: return simp_ins("RETURN", offset);
   case Code::CLASS: return const_ins(this, "CLASS", offset);

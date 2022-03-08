@@ -30,9 +30,12 @@
 namespace loxcc::bytecc {
 
 inline int dis_compound(
-    Chunk* chunk, const char* prompt, int i, bool with_constant = false) noexcept {
+    Chunk* chunk, const char* prompt, int i, bool with_constant = false, int n = 0) noexcept {
   auto c = chunk->get_code(i + 1);
-  std::fprintf(stdout, "%-16s %4d", prompt, c);
+  if (n > 1)
+    std::fprintf(stdout, "%s_%-*d %4d", prompt, 15 - Xt::as_type<int>(std::strlen(prompt)), n, c);
+  else
+    std::fprintf(stdout, "%-16s %4d", prompt, c);
   if (with_constant)
     std::cout << " `" << chunk->get_constant(c) << "`";
   std::cout << std::endl;
@@ -49,6 +52,12 @@ inline int dis_simple(Chunk* chunk, const char* prompt, int i, int n = 0) noexce
   return i + 1;
 }
 
+inline int dis_jump(Chunk* chunk, const char* prompt, int i, int sign) noexcept {
+  u16_t jump = Xt::as_type<u16_t>((chunk->get_code(i + 1) << 8) | chunk->get_code(i + 2));
+  std::fprintf(stdout, "%-16s %4d -> %d\n", prompt, i, i + 3 + jump * sign);
+  return i + 3;
+}
+
 void Chunk::dis(const str_t& name) {
   std::cout << "========= [" << name << "] =========" << std::endl;
   for (int i = 0; i < codes_count();)
@@ -56,18 +65,6 @@ void Chunk::dis(const str_t& name) {
 }
 
 int Chunk::dis_ins(int offset) {
-  auto const_insN = [](Chunk* c, const str_t& s, int i, int n) -> int {
-    u8_t constant = c->get_code(i + 1);
-    fprintf(stdout, "%s_%-*d %4d ", s.c_str(), 15 - Xt::as_type<int>(s.size()), n, constant);
-    std::cout << "`" << c->get_constant(constant) << "`" << std::endl;
-    return i + 2;
-  };
-  auto jump_ins = [](Chunk* c, const char* s, int i, int sign) -> int {
-    u16_t jump = Xt::as_type<u16_t>((c->get_code(i + 1) << 8) | c->get_code(i + 2));
-    fprintf(stdout, "%-16s %4d -> %d\n", s, i, i + 3 + jump * sign);
-    return i + 3;
-  };
-
   fprintf(stdout, "%04d ", offset);
   if (offset > 0 && lines_[offset] == lines_[offset - 1])
     std::cout << "   | ";
@@ -76,8 +73,10 @@ int Chunk::dis_ins(int offset) {
 
 #define COMPOUND(x)     return dis_compound(this, #x, offset)
 #define COMPOUND2(x, b) return dis_compound(this, #x, offset, (b))
+#define COMPOUND3(x, n) return dis_compound(this, #x, offset, true, (n))
 #define SIMPLE(x)       return dis_simple(this, #x, offset)
 #define SIMPLE2(x, n)   return dis_simple(this, #x, offset, (n))
+#define JUMP(x, s)      return dis_jump(this, #x, offset, (s))
 
   switch (Code c = Xt::as_type<Code>(codes_[offset])) {
   case Code::CONSTANT: COMPOUND2(CONSTANT, true);
@@ -108,9 +107,9 @@ int Chunk::dis_ins(int offset) {
   case Code::NOT: SIMPLE(NOT);
   case Code::NEG: SIMPLE(NEG);
   case Code::PRINT: SIMPLE(PRINT);
-  case Code::JUMP: return jump_ins(this, "JUMP", offset, 1);
-  case Code::JUMP_IF_FALSE: return jump_ins(this, "JUMP_IF_FALSE", offset, 1);
-  case Code::LOOP: return jump_ins(this, "LOOP", offset, -1);
+  case Code::JUMP: JUMP(JUMP, 1);
+  case Code::JUMP_IF_FALSE: JUMP(JUMP_IF_FALSE, 1);
+  case Code::LOOP: JUMP(LOOP, -1);
   case Code::CALL_0:
   case Code::CALL_1:
   case Code::CALL_2:
@@ -128,7 +127,7 @@ int Chunk::dis_ins(int offset) {
   case Code::INVOKE_5:
   case Code::INVOKE_6:
   case Code::INVOKE_7:
-  case Code::INVOKE_8: return const_insN(this, "INVOKE_", offset, c - Code::INVOKE_0);
+  case Code::INVOKE_8: COMPOUND3(INVOKE_, c - Code::INVOKE_0);
   case Code::SUPER_0:
   case Code::SUPER_1:
   case Code::SUPER_2:
@@ -137,7 +136,7 @@ int Chunk::dis_ins(int offset) {
   case Code::SUPER_5:
   case Code::SUPER_6:
   case Code::SUPER_7:
-  case Code::SUPER_8: return const_insN(this, "SUPER_", offset, c - Code::SUPER_0);
+  case Code::SUPER_8: COMPOUND3(SUPER_, c - Code::SUPER_0);
   case Code::CLOSURE: COMPOUND2(CLOSURE, true);
   case Code::CLOSE_UPVALUE: SIMPLE(CLOSE_UPVALUE);
   case Code::RETURN: SIMPLE(RETURN);
@@ -146,6 +145,14 @@ int Chunk::dis_ins(int offset) {
   case Code::METHOD: COMPOUND2(METHOD, true);
   default: std::cerr << "UNKNOWN CODE: " << c << std::endl; break;
   }
+
+#undef JUMP
+#undef SIMPLE2
+#undef SIMPLE
+#undef COMPOUND3
+#undef COMPOUND2
+#undef COMPOUND
+
   return offset + 1;
 }
 

@@ -56,6 +56,7 @@ using u64_t     = std::uint64_t;
 #endif
 using sz_t      = std::size_t;
 using str_t     = std::string;
+using cstr_t    = const char*;
 using strv_t    = std::string_view;
 using ss_t      = std::stringstream;
 using safe_t    = LoxccSafe;
@@ -90,33 +91,25 @@ public:
 };
 
 namespace Xt {
-  template <typename I, typename E>
-  inline I as_type(E x) noexcept { return static_cast<I>(x); }
-
-  template <typename T>
-  inline T* as_ptr(const T* x) noexcept { return const_cast<T*>(x); }
-
-  template <typename T, typename S>
-  inline T* cast(S* x) noexcept { return static_cast<T*>(x); }
-
-  template <typename T, typename S>
-  inline T* down(S* x) noexcept { return dynamic_cast<T*>(x); }
+  template <typename I, typename E> inline I as_type(E x) noexcept { return static_cast<I>(x); }
+  template <typename T> inline T* as_ptr(const T* x) noexcept { return const_cast<T*>(x); }
+  template <typename T, typename S> inline T* cast(S* x) noexcept { return static_cast<T*>(x); }
+  template <typename T, typename S> inline T* down(S* x) noexcept { return dynamic_cast<T*>(x); }
 
   template <typename T, typename S>
   inline T* const_down(const S* x) noexcept { return down<T>(const_cast<S*>(x)); }
 
-  inline u32_t hasher(const char* s, int n) noexcept {
+  template <typename N> inline u32_t hasher(const char* s, N n) noexcept {
     // FNV-1a hash. See: http://www.isthe.com/chongo/tech/comp/fnv/
     u32_t hash = 2166136261u;
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < as_type<sz_t>(n); ++i) {
       hash ^= s[i];
       hash *= 16777619;
     }
     return hash;
   }
 
-  template <typename T>
-  inline double to_decimal(T x) noexcept { return static_cast<double>(x); }
+  template <typename T> inline double to_decimal(T x) noexcept { return as_type<double>(x); }
 
   inline str_t to_string(double d) noexcept {
     std::stringstream ss;

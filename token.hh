@@ -84,37 +84,23 @@ public:
   }
 
   inline bool operator==(const Token& r) const noexcept {
-    return literal_ == r.literal_;
+    return this == &r ? true : literal_ == r.literal_;
   }
 
   inline bool operator!=(const Token& r) const noexcept {
-    return literal_ != r.literal_;
+    return !(*this == r);
   }
 
-  inline TokenKind kind(void) const noexcept {
-    return kind_;
-  }
-
-  inline const str_t& literal(void) const noexcept {
-    return literal_;
-  }
-
-  inline int lineno(void) const noexcept {
-    return lineno_;
-  }
-
-  inline double as_numeric(void) const noexcept {
-    return std::atof(literal_.c_str());
-  }
-
-  inline str_t as_string(void) const noexcept {
-    return literal_;
-  }
+  inline TokenKind kind(void) const noexcept { return kind_; }
+  inline const str_t& literal(void) const noexcept { return literal_; }
+  inline int lineno(void) const noexcept { return lineno_; }
+  inline double as_numeric(void) const noexcept { return std::atof(literal_.c_str()); }
+  inline str_t as_string(void) const noexcept { return literal_; }
 
   str_t stringify(void) const noexcept;
 
-  static Token make_custom(const str_t& literal) noexcept {
-    return Token(TokenKind::TK_STRING, literal);
+  static Token make_from_literal(const str_t& literal) noexcept {
+    return Token{TokenKind::TK_STRING, literal};
   }
 };
 

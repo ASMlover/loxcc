@@ -60,7 +60,7 @@ public:
   }
 
   inline const Value& get(const str_t& name) const {
-    return get(Token::make_custom(name));
+    return get(Token::make_from_literal(name));
   }
 
   inline const Value& get_at(int distance, const str_t& name) {
@@ -72,7 +72,7 @@ public:
   }
 
   inline void assign(const str_t& name, const Value& value) {
-    assign(Token::make_custom(name), value);
+    assign(Token::make_from_literal(name), value);
   }
 
   inline void assign_at(int distance, const str_t& name, const Value& value) {

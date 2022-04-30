@@ -265,13 +265,13 @@ class GlobalParser final : private UnCopyable {
     if (type != FunctionType::FUNCTION) {
       // in a method, it holds the instance object, "use `this`"
       curr_compiler_->locals.push_back(LocalVar(
-            Token::make_custom("this"), curr_compiler_->scope_depth, false));
+            Token::make_from_literal("this"), curr_compiler_->scope_depth, false));
     }
     else {
       // in a function, it holds the function, but cannot be referenced,
       // so it has no name
       curr_compiler_->locals.push_back(LocalVar(
-            Token::make_custom(""), curr_compiler_->scope_depth, false));
+            Token::make_from_literal(""), curr_compiler_->scope_depth, false));
     }
   }
 
@@ -582,7 +582,7 @@ class GlobalParser final : private UnCopyable {
   void super_exp(bool can_assign) {
     auto push_superclass = [](GlobalParser* p) {
       if (p->curr_class_ != nullptr)
-        p->named_variable(Token::make_custom("super"), false);
+        p->named_variable(Token::make_from_literal("super"), false);
     };
 
     if (curr_class_ == nullptr)
@@ -595,7 +595,7 @@ class GlobalParser final : private UnCopyable {
     u8_t name_constant = identifier_constant(prev_);
 
     // push the receiver instance object
-    named_variable(Token::make_custom("this"), false);
+    named_variable(Token::make_from_literal("this"), false);
 
     if (match(TokenKind::TK_LPAREN)) {
       u8_t argc = argument_list();
@@ -853,7 +853,7 @@ class GlobalParser final : private UnCopyable {
       // store the superclass in a local variable named "super"
       variable(false);
       curr_compiler_->locals.push_back(
-          LocalVar(Token::make_custom("super"), -1, false));
+          LocalVar(Token::make_from_literal("super"), -1, false));
       define_variable(0);
 
       named_variable(class_name, false);
